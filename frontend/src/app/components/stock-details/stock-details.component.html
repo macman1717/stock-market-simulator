@@ -1,0 +1,265 @@
+@if (stock && watchlistModalOpen) {
+    <app-watchlist-modal [symbol]="stock.stockInfo.symbol" (close)="watchlistModalOpen = false"></app-watchlist-modal>
+}
+
+<div class="bg-surface dark:bg-surface-dark h-screen grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 grid-rows-[min-content_min-content_auto] gap-6 p-8"> 
+    <div class="col-span-full row-span-2" *ngIf="stock">
+        <app-news-stock-modal [stockSymbol]="stock.stockInfo.symbol"></app-news-stock-modal>
+    </div>
+    
+    <!-- grid-rows-8 md:grid-rows-7 xl:grid-rows-5  -->
+    <div class="md:col-span-2 row-span-4">
+        <app-card>
+
+            @if (stock) {
+                <div class="grid grid-cols-1 grid-rows-8 w-full h-full">
+                    <div class="row-span-1 col-span-1 flex justify-between mb-1">
+                        <div class="flex space-x-3">
+                            <img src="https://images.financialmodelingprep.com/symbol/{{ stock.stockInfo.symbol }}.png" class="w-13 h-13 object-contain rounded-md" />
+
+                            <div>
+                                <h2 class="text-2xl">{{ stock && stock.stockInfo.companyName }}</h2>
+                                <p class="text-on-surface/50 dark:text-on-surface-dark/50">{{ stock && stock.stockInfo.symbol }}</p>
+                            </div>
+                            
+                        </div>
+
+                        <div class="text-right">
+                            <h2 class="text-2xl">${{ currentPrice }}</h2>
+                        </div>
+                    </div>
+
+
+
+                    <div class="row-span-7 col-span-1 flex flex-col items-center justify-center w-full h-full">
+                        <hr class="border-gray-300 dark:border-neutral-700 border-1 w-full mx-auto mb-8">
+
+
+                        @if (chartOptions) {
+                            <ag-charts class="w-full h-full"
+                                [options]="chartOptions">
+                            </ag-charts>
+                        }
+                    </div>
+                </div>
+
+
+            } @else {
+                <p>Loading</p>
+            }
+
+        </app-card>
+    </div>
+
+    @if (wallet) {
+        <div class="row-span-1 md:col-span-2 xl:col-span-1">
+            <div (click)="watchlistModalOpen = true" class="rounded-lg relative p-3 border-outline border dark:border-outline-dark bg-surface-alt dark:bg-surface-dark-alt hover:bg-surface-alt/10 dark:hover:bg-surface-alt*20 cursor-pointer text-on-surface dark:text-on-surface-dark flex flex-col">
+                <p class="text-center">Add to Watchlists</p>
+            </div>
+            
+        </div>
+    }
+    
+
+    <div class="md:col-span-2 xl:col-span-1">
+        <div class="rounded-lg relative p-8 border-outline border dark:border-outline-dark bg-surface-alt dark:bg-surface-dark-alt text-on-surface dark:text-on-surface-dark flex flex-col">
+
+        
+            @if ( wallet && stock ) {
+                
+                @if (transactionComplete || transactionLoading) {
+                    @if (transactionLoading) {
+                        <p class="text-xl">Processing Transaction...</p>
+                    } @else {
+                        @if (orderType === 'Limit') {
+                            <p class="text-xl">Successfully placed order.</p>
+                        } @else {
+                            @if (buyTab) {
+                                <p class="text-xl">Successfully bought {{ quantity | number:'1.0' }} shares of {{ stock.stockInfo.symbol }}.</p>
+                            } @else {
+                                <p class="text-xl">Successfully sold {{ quantity | number:'1.0' }} shares of {{ stock.stockInfo.symbol }}.</p>
+                            }
+                        }
+
+                        
+    
+                        <button (click)="reload()" type="submit" class="mt-2 cursor-pointer w-full py-2 text-on-primary dark:text-on-primary-dark rounded bg-primary dark:bg-primary-dark hover:bg-secondary dark:hover:bg-secondary-dark">
+                            OK
+                        </button>
+                    }
+                    
+                } @else {
+                    <div class="mb-3 flex gap-2 overflow-x-auto border-b border-outline dark:border-outline-dark" role="tablist" aria-label="tab options">
+                        <button 
+                            (click)="setBuying(true)" 
+                            [attr.aria-selected]="buyTab === true" 
+                            [attr.tabindex]="buyTab === true ? '0' : '-1'" 
+                            [ngClass]="{
+                                'font-bold text-primary border-b-2 border-primary dark:border-primary-dark dark:text-primary-dark': buyTab === true,
+                                'text-on-surface font-medium dark:text-on-surface-dark dark:hover:border-b-outline-dark-strong dark:hover:text-on-surface-dark-strong hover:border-b-2 hover:border-b-outline-strong hover:text-on-surface-strong': buyTab === false,
+                            }"
+                            class="cursor-pointer h-min px-4 py-2 text-sm"
+                            type="button"
+                            role="tab"
+                            aria-controls="tabpanelBuy">
+                            Buy
+                        </button>
+                        
+                        <button 
+                            (click)="setBuying(false)" 
+                            [attr.aria-selected]="buyTab === false" 
+                            [attr.tabindex]="buyTab === false ? '0' : '-1'" 
+                            [ngClass]="{
+                                'font-bold text-primary border-b-2 border-primary dark:border-primary-dark dark:text-primary-dark': buyTab === false,
+                                'text-on-surface font-medium dark:text-on-surface-dark dark:hover:border-b-outline-dark-strong dark:hover:text-on-surface-dark-strong hover:border-b-2 hover:border-b-outline-strong hover:text-on-surface-strong': buyTab === true,
+                            }"
+                            class="cursor-pointer h-min px-4 py-2 text-sm"
+                            type="button"
+                            role="tab"
+                            aria-controls="tabpanelSell">
+                            Sell
+                        </button>
+                    </div>
+                    <p class="text-lg mb-3">You have {{ (sharesDict[stock.stockInfo.symbol] || 0) }} shares.</p>
+                    
+                    <div class="mt-2 relative flex w-full max-w-xs flex-col gap-1 text-on-surface dark:text-on-surface-dark mb-4">
+                        <label for="orderType" class="w-fit pl-0.5 text-sm">Order Type</label>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="absolute pointer-events-none right-3 top-9 size-5">
+                            <path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
+                        </svg>
+                        <select [(ngModel)]="orderType" id="orderType" name="orderType" class="w-full appearance-none rounded-radius p-2 border outline-none bg-surface dark:bg-surface-dark text-on-surface dark:text-on-surface-dark focus:ring-2 focus:ring-outline dark:focus:ring-outline-dark">
+                            <option value="Market">Market</option>
+                            <option value="Limit">Limit</option>
+                        </select>
+                    </div>                        
+                    
+
+                    <form [formGroup]="buyForm" (ngSubmit)="onSubmit()" class="mt-1">
+                        <div class="mb-4">
+                            <label class="flex w-fit items-center gap-1 pl-0.5 text-sm"
+                                [ngClass]="quantityInvalid ? 'text-danger' : 'text-on-surface dark:text-on-surface-dark'">
+                                <ng-container *ngIf="quantityInvalid">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor" class="w-4 h-4">
+                                        <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z"/>
+                                    </svg>
+                                </ng-container>
+                                Quantity
+                            </label>
+                            <input ngModel [ngClass]="{'border-danger': quantityInvalid}" type="string" formControlName="quantity" 
+                                class="w-full p-2 mt-1 border rounded outline-none bg-surface dark:bg-surface-dark text-on-surface dark:text-on-surface-dark focus:ring-2 focus:ring-outline dark:focus:ring-outline-dark">
+                                @if (quantityInvalid) {
+                                    @if (quantityNonInt) {
+                                        <small class="pl-0.5 text-danger">Error: Quantity must be a number</small>
+                                    } @else {
+                                        @if (!buyTab && buyForm.controls['quantity'].hasError('exceedsShares')) {
+                                            
+                                            <small class="pl-0.5 text-danger">
+                                                {{ sharesDict[stock.stockInfo.symbol] ? 
+                                                    ('Error: You cannot sell more than ' + (stock ? sharesDict[stock.stockInfo.symbol] : '?') + ' shares.') : 
+                                                    'You don\'t have any shares to sell' 
+                                                }}
+                                            </small>
+                                            
+                                        } @else {
+                                            <small class="pl-0.5 text-danger">Error: Quantity is required</small>
+                                        }
+                                    }
+                                }
+                        </div>
+
+                        <div class="mb-4" *ngIf="orderType==='Limit'">
+                            <label class="flex w-fit items-center gap-1 pl-0.5 text-sm"
+                                [ngClass]="limitPriceInvalid ? 'text-danger' : 'text-on-surface dark:text-on-surface-dark'">
+                                <ng-container *ngIf="limitPriceInvalid">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor" class="w-4 h-4">
+                                        <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z"/>
+                                    </svg>
+                                </ng-container>
+                                Limit Price
+                            </label>
+                            <input ngModel [ngClass]="{'border-danger': limitPriceInvalid}" type="string" formControlName="limitPrice" 
+                                class="w-full p-2 mt-1 border rounded outline-none bg-surface dark:bg-surface-dark text-on-surface dark:text-on-surface-dark focus:ring-2 focus:ring-outline dark:focus:ring-outline-dark">
+                                @if (limitPriceInvalid) {
+                                    @if (limitPriceNonInt) {
+                                        <small class="pl-0.5 text-danger">Error: Limit price must be a number</small>
+                                    } @else {
+                                        <small class="pl-0.5 text-danger">Error: Limit price is required</small>
+                                    }
+                                }
+                        </div>
+
+                        <div class="my-3" *ngIf="orderType!=='Limit'">
+                            @if (quantity && !quantityInvalid) {
+                                <div class="flex justify-between my-1">
+                                    <p class="text-md">Current balance:</p>
+                                    <p class="text-md text-right font-medium">${{ wallet.wallet.balance | number:'1.2-2' }}</p>
+                                </div>
+
+                                @if (buyTab) {
+                                    <div class="flex justify-between my-1">
+                                        <p class="text-md">Cost for {{ quantity | number:'1.0' }} shares:</p>
+                                        <p class="text-md text-right font-medium">${{ (currentPrice * quantity) | number:'1.2-2' }}</p>
+                                    </div>
+                                    <div class="flex justify-between my-1">
+                                        <p class="text-md">New balance:</p>
+                                        <p class="text-md text-right">${{ (+wallet.wallet.balance - currentPrice * quantity) | number:'1.2-2' }}</p>
+                                    </div>
+                                } @else {
+                                    <div class="flex justify-between my-1">
+                                        <p class="text-md">Value of {{ quantity | number:'1.0' }} shares:</p>
+                                        <p class="text-md text-right font-medium">${{ (currentPrice * quantity) | number:'1.2-2' }}</p>
+                                    </div>
+                                    <div class="flex justify-between my-1">
+                                        <p class="text-md">New balance:</p>
+                                        <p class="text-md text-right">${{ (+wallet.wallet.balance + currentPrice * quantity) | number:'1.2-2' }}</p>
+                                    </div>
+                                }
+                            }
+                        </div>
+                        
+                        
+
+                        <button type="submit" class="cursor-pointer w-full py-2 text-on-primary dark:text-on-primary-dark rounded bg-primary dark:bg-primary-dark hover:bg-secondary dark:hover:bg-secondary-dark">
+                            {{ orderType === 'Limit' ? 'Place Order' : (buyTab ? 'Buy' : 'Sell') }}
+                        </button>
+                    </form>
+                }
+            } @else {
+                <p class="text-xl">No Wallet Selected</p>
+            }
+        </div>
+    </div>
+
+    <div class="md:col-span-2 xl:col-span-1">
+        <div class="rounded-lg relative p-8 border-outline border dark:border-outline-dark bg-surface-alt dark:bg-surface-dark-alt text-on-surface dark:text-on-surface-dark flex flex-col h-[400px] overflow-y-auto">
+            @if (stock) {
+                <h2 class="text-2xl mb-2">Company Profile</h2>
+                <p class="font-bold">Industry</p>
+                <p class="mb-2">{{ stock.stockInfo.industry }}</p>
+    
+                <p class="font-bold">Market Cap</p>
+                <p class="mb-2">{{ formatMarketCap(stock.stockInfo.mktCap) }}</p>
+    
+                <p class="font-bold">Number of Employees</p>
+                <p class="mb-2">{{ stock.stockInfo.fullTimeEmployees | number:'1.0-0' }}</p>
+    
+                <p class="font-bold">Business Summary</p>
+                <p>
+                    {{ descriptionExpanded ? stock.stockInfo.description : (stock.stockInfo.description | slice:0:200) + '...' }}
+                    <button (click)="descriptionExpanded = !descriptionExpanded" class="cursor-pointer text-primary dark:text-primary-dark underline ml-1">
+                        {{ descriptionExpanded ? 'Show Less' : 'Read More' }}
+                    </button>
+                </p>
+            } @else {
+                <h2 class="text-2xl">Loading...</h2>
+            }
+        </div>
+    </div>
+
+    <div class="md:col-span-2 xl:col-span-3 pb-8">
+        <app-ai-stock-modal [stockSymbol]="stock.stockInfo.symbol"></app-ai-stock-modal>
+    </div>
+    
+    
+</div>
+
